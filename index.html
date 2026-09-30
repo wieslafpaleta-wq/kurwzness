@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f7d6b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Dziennik</title>
+<style>
+:root{--bg:#f1f5f3;--fg:#15302a;--card:#fff;--mut:#6b7f78;--ac:#2f7d6b;--bd:#dde6e2;--sh:0 1px 3px rgba(21,48,42,.08)}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1916;--fg:#e6f0ec;--card:#182521;--mut:#8ea79f;--ac:#4fb59e;--bd:#27382f;--sh:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+main{max-width:560px;margin:0 auto}
+header{margin:6px 2px 18px}
+h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.3px}
+header p{margin:2px 0 0;color:var(--mut);font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:26px}
+.tile{border:0;border-radius:18px;padding:14px 6px 12px;background:color-mix(in srgb,var(--c) 14%,var(--card));color:var(--fg);font:600 14px inherit;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s}
+.tile:active{transform:scale(.95)}
+.tile i{font-style:normal;font-size:28px;width:48px;height:48px;border-radius:14px;background:color-mix(in srgb,var(--c) 22%,var(--card));display:grid;place-items:center}
+.day{display:flex;justify-content:space-between;align-items:baseline;margin:22px 4px 8px}
+.day b{font-size:16px;text-transform:capitalize}
+.day span{color:var(--mut);font-size:13px}
+.e{display:flex;gap:12px;align-items:center;background:var(--card);box-shadow:var(--sh);border:1px solid var(--bd);border-radius:16px;padding:11px 12px;margin-bottom:8px}
+.e i{font-style:normal;font-size:22px;width:42px;height:42px;flex:none;border-radius:12px;background:color-mix(in srgb,var(--c) 20%,var(--card));display:grid;place-items:center}
+.e div{flex:1;min-width:0}
+.e b{display:block;font-size:15px}
+.e b em{font-style:normal;color:var(--mut);font-weight:500;margin-left:6px;font-size:14px}
+.e small{display:block;color:var(--mut);font-size:14px;margin-top:1px;overflow-wrap:anywhere}
+.x{background:none;border:0;color:var(--mut);font-size:16px;padding:8px;border-radius:10px}
+.empty{text-align:center;color:var(--mut);padding:30px 10px}
+#m{position:fixed;inset:0;background:rgba(10,20,17,.5);display:none;align-items:flex-end;justify-content:center;z-index:5}
+#m.on{display:flex}
+.sh{background:var(--bg);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:24px 24px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+@media(prefers-reduced-motion:reduce){.sh{animation:none}}
+.sh h2{margin:0 0 4px;font-size:20px}
+label{display:block;font-size:14px;font-weight:600;margin:16px 0 8px}
+input[type=text],input[type=datetime-local]{width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--bd);background:var(--card);color:var(--fg);font:inherit}
+input:focus{outline:2px solid var(--ac);border-color:transparent}
+.ch{display:flex;flex-wrap:wrap;gap:8px}
+.ch button{padding:10px 15px;border-radius:999px;border:1.5px solid var(--bd);background:var(--card);color:var(--fg);font:inherit;font-size:15px}
+.ch button.s{background:var(--c);border-color:var(--c);color:#fff;font-weight:600}
+.row{display:flex;gap:10px;margin-top:24px}
+.row button{flex:1;padding:14px;border-radius:14px;border:0;font:600 16px inherit;font-family:inherit;background:var(--bd);color:var(--fg)}
+.row .ok{flex:2;background:var(--c);color:#fff}
+.ft{display:flex;gap:10px;margin-top:30px}
+.ft button{flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--bd);background:none;color:var(--mut);font:inherit;font-size:14px}
+button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Dziennik</h1><p id="sub"></p></header>
+<div class="grid" id="g"></div>
+<div id="list"></div>
+<div class="ft"><button onclick="dl()">Pobierz CSV</button><button onclick="cp()">Kopiuj dane</button><button onclick="clr()">Wyczyść</button></div>
+</main>
+<div id="m" onclick="if(event.target===this)cl()"><div class="sh" id="sh"></div></div>
+<script>
+const TEMP=['zimne','chłodne','pokojowa','ciepłe','gorące'];
+const T={
+meal:{i:'🍽️',c:'#e08a3c',l:'Posiłek',f:[['co','Co jadłem','text'],['pop','Czym popijałem','text'],['temp','Temperatura picia',TEMP],['poz','Po posiłku',['siedziałem','półsiedziałem','leżałem','ruszałem się']]]},
+drink:{i:'🥤',c:'#3b8fd1',l:'Picie',f:[['co','Co piłem','text'],['temp','Temperatura',TEMP]]},
+poo:{i:'🚽',c:'#9a6f4c',l:'Stolec',f:[['kol','Kolor',['jasny','niejasny']],['kon','Konsystencja',['nieluźny','luźny','sraka']]]},
+cre:{i:'💊',c:'#8b5fc9',l:'Kreatyna',f:[['smak','Smak',['jabłko','marakuja','bezsmakowa']],['ile','Ilość (opcjonalnie)','text']]},
+sleep:{i:'😴',c:'#4a5bb5',l:'Sen',f:[['faza','Faza snu przy wybudzeniu',['lekka','głęboka','REM','nie wiem']]]},
+mus:{i:'🎵',c:'#d1507a',l:'Muzyka',f:[['czy','Słuchałem',['tak','nie']],['jaka','Jaka (wpisz)','text']]}
+};
+let D=[],cur=null,val={};
+try{D=JSON.parse(localStorage.getItem('dz')||'[]')}catch(e){}
+const sv=()=>{try{localStorage.setItem('dz',JSON.stringify(D))}catch(e){}};
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const loc=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('g').innerHTML=Object.keys(T).map(k=>`<button class="tile" style="--c:${T[k].c}" onclick="op('${k}')"><i>${T[k].i}</i>${T[k].l}</button>`).join('');
+function op(k){cur=k;val={};const t=T[k];
+$('sh').style.setProperty('--c',t.c);
+$('sh').innerHTML=`<h2>${t.i} ${t.l}</h2><label>Kiedy</label><input type="datetime-local" id="ts" value="${loc(new Date())}">`+
+t.f.map(([n,l,o])=>`<label>${l}</label>`+(o==='text'?`<input type="text" id="f_${n}" autocomplete="off">`:`<div class="ch">${o.map(x=>`<button data-n="${n}" data-v="${x}" onclick="pk(this)">${x}</button>`).join('')}</div>`)).join('')+
+`<div class="row"><button onclick="cl()">Anuluj</button><button class="ok" onclick="sa()">Zapisz</button></div>`;
+$('m').classList.add('on')}
+function pk(b){const n=b.dataset.n;if(val[n]===b.dataset.v){delete val[n];b.classList.remove('s');return}
+val[n]=b.dataset.v;document.querySelectorAll(`[data-n="${n}"]`).forEach(x=>x.classList.toggle('s',x===b))}
+function cl(){$('m').classList.remove('on')}
+function sa(){const d={};T[cur].f.forEach(([n,,o])=>{const v=o==='text'?$('f_'+n).value.trim():val[n];if(v)d[n]=v});
+D.push({id:Date.now(),t:cur,ts:$('ts').value||loc(new Date()),d});D.sort((a,b)=>b.ts.localeCompare(a.ts));sv();cl();rn()}
+function del(id){if(confirm('Usunąć wpis?')){D=D.filter(e=>e.id!==id);sv();rn()}}
+function rn(){let h='',last='';
+const today=loc(new Date()).slice(0,10),n=D.filter(e=>e.ts.startsWith(today)).length;
+$('sub').textContent=new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'})+' · dziś '+n+' wpisów';
+const cnt={};D.forEach(e=>{const d=e.ts.slice(0,10);cnt[d]=(cnt[d]||0)+1});
+D.forEach(e=>{const [day,tm]=e.ts.split('T');
+if(day!==last){last=day;h+=`<div class="day"><b>${day===today?'Dziś':new Date(day).toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'})}</b><span>${cnt[day]} wpisów</span></div>`}
+const t=T[e.t],x=t.f.map(([k,l])=>e.d[k]?`${l.split(' (')[0]}: ${esc(e.d[k])}`:'').filter(Boolean).join('\n');
+h+=`<div class="e" style="--c:${t.c}"><i>${t.i}</i><div><b>${t.l}<em>${tm}</em></b><small>${x?x.split('\n').join('<br>'):'—'}</small></div><button class="x" aria-label="Usuń" onclick="del(${e.id})">✕</button></div>`});
+$('list').innerHTML=h||'<div class="empty">Brak wpisów.<br>Dotknij kafelka powyżej, żeby dodać pierwszy.</div>'}
+const csv=()=>['czas;typ;szczegóły',...D.map(e=>`${e.ts.replace('T',' ')};${T[e.t].l};${Object.values(e.d).join(' | ')}`)].join('\n');
+function dl(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv()],{type:'text/csv'}));a.download='dziennik-'+loc(new Date()).slice(0,10)+'.csv';a.click()}
+function cp(){navigator.clipboard.writeText(csv()).then(()=>alert('Skopiowano do schowka'),()=>alert('Nie udało się skopiować'))}
+function clr(){if(confirm('Usunąć WSZYSTKIE wpisy? Tego nie da się cofnąć.')){D=[];sv();rn()}}
+rn();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
